@@ -15,7 +15,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Parse form data for login POST
 app.use(express.urlencoded({ extended: true }));
 
 app.use('/', createProxyMiddleware({
@@ -33,13 +32,16 @@ app.use('/', createProxyMiddleware({
     }
   },
   onProxyRes: (proxyRes, req, res) => {
-    // Forward headers except encoding/length (let pipe handle)
-    Object.entries(proxyRes.headers).forEach(([key, value]) => {
-      if (key !== 'transfer-encoding' && key !== 'content-encoding' && key !== 'content-length') {
+    // Use rawHeaders to preserve ALL set-cookie headers (multiple values)
+    const raw = proxyRes.rawHeaders;
+    for (let i = 0; i < raw.length; i += 2) {
+      const key = raw[i];
+      const value = raw[i + 1];
+      const lowerKey = key.toLowerCase();
+      if (lowerKey !== 'transfer-encoding' && lowerKey !== 'content-encoding' && lowerKey !== 'content-length') {
         res.setHeader(key, value);
       }
-    });
-    // Pipe handles decompression automatically
+    }
     proxyRes.pipe(res);
   },
 }));

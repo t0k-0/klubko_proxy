@@ -19,14 +19,12 @@ app.use((req, res, next) => {
 app.use(express.urlencoded({ extended: true }));
 
 app.use('/', createProxyMiddleware({
-  target: 'https://klubko.aeroklub-kolin.cz/rest-api/',  // Target includes /rest-api/
+  target: 'https://klubko.aeroklub-kolin.cz/rest-api/',
   changeOrigin: true,
-  pathRewrite: { '^/rest-api': '' },  // Strip /rest-api from incoming path
-  selfHandleResponse: true,  // Critical: lets us forward Set-Cookie headers
+  pathRewrite: { '^/rest-api': '' },
+  selfHandleResponse: true,
   onProxyReq: (proxyReq, req) => {
-    // Forward cookies from browser to API
     if (req.headers.cookie) proxyReq.setHeader('cookie', req.headers.cookie);
-    // Forward form body for POST requests
     if (req.body && Object.keys(req.body).length) {
       const bodyData = new URLSearchParams(req.body).toString();
       proxyReq.setHeader('Content-Type', 'application/x-www-form-urlencoded');
@@ -35,16 +33,14 @@ app.use('/', createProxyMiddleware({
     }
   },
   onProxyRes: (proxyRes, req, res) => {
-    // Forward ALL headers including Set-Cookie
+    // Forward headers except encoding/length (let pipe handle)
     Object.entries(proxyRes.headers).forEach(([key, value]) => {
-      if (key !== 'transfer-encoding') res.setHeader(key, value);
+      if (key !== 'transfer-encoding' && key !== 'content-encoding' && key !== 'content-length') {
+        res.setHeader(key, value);
+      }
     });
-    // Forward response body
-    let body = '';
-    proxyRes.on('data', chunk => body += chunk);
-    proxyRes.on('end', () => {
-      res.status(proxyRes.statusCode).send(body);
-    });
+    // Pipe handles decompression automatically
+    proxyRes.pipe(res);
   },
 }));
 

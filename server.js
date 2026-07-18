@@ -4,7 +4,6 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const app = express();
 
-// CORS headers for your GitHub Pages origin
 app.use((req, res, next) => {
   const origin = req.headers.origin || 'https://t0k-0.github.io';
   res.setHeader('Access-Control-Allow-Origin', origin);
@@ -32,13 +31,14 @@ app.use('/', createProxyMiddleware({
     }
   },
   onProxyRes: (proxyRes, req, res) => {
-    // Use rawHeaders to preserve ALL set-cookie headers (multiple values)
+    // Forward ALL headers using rawHeaders (preserves multiple set-cookie)
+    // Keep content-encoding so browser auto-decompresses gzip/deflate
     const raw = proxyRes.rawHeaders;
     for (let i = 0; i < raw.length; i += 2) {
       const key = raw[i];
       const value = raw[i + 1];
       const lowerKey = key.toLowerCase();
-      if (lowerKey !== 'transfer-encoding' && lowerKey !== 'content-encoding' && lowerKey !== 'content-length') {
+      if (lowerKey !== 'transfer-encoding' && lowerKey !== 'content-length') {
         res.setHeader(key, value);
       }
     }

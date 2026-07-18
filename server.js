@@ -31,14 +31,20 @@ app.use('/', createProxyMiddleware({
     }
   },
   onProxyRes: (proxyRes, req, res) => {
-    // Forward ALL headers using rawHeaders (preserves multiple set-cookie)
-    // Keep content-encoding so browser auto-decompresses gzip/deflate
     const raw = proxyRes.rawHeaders;
     for (let i = 0; i < raw.length; i += 2) {
       const key = raw[i];
       const value = raw[i + 1];
       const lowerKey = key.toLowerCase();
-      if (lowerKey !== 'transfer-encoding' && lowerKey !== 'content-length') {
+      
+      if (lowerKey === 'set-cookie') {
+        // Add SameSite=None; Secure for cross-site cookie acceptance
+        let cookie = value;
+        if (!cookie.includes('SameSite')) {
+          cookie += '; SameSite=None; Secure';
+        }
+        res.setHeader(key, cookie);
+      } else if (lowerKey !== 'transfer-encoding' && lowerKey !== 'content-length') {
         res.setHeader(key, value);
       }
     }
